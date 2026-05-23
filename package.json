@@ -1,0 +1,55 @@
+{
+  "name": "@yksanjo/agentdesk-flow",
+  "version": "0.1.0",
+  "description": "Live capital-flow indicator for crypto perps + pump.fun. CLI ticker + gauge dashboard + bot veto layer.",
+  "type": "module",
+  "main": "src/index.ts",
+  "bin": {
+    "agentdesk-flow": "src/cli.ts"
+  },
+  "scripts": {
+    "start": "tsx src/daemon.ts",
+    "headless": "FLOW_HEADLESS=1 tsx src/daemon.ts",
+    "snapshot": "tsx src/daemon.ts --once",
+    "dash": "tsx src/ticker.ts",
+    "gauge": "tsx src/dash.ts",
+    "dash-all": "tsx src/dash.ts --with-producer",
+    "preview": "tsx scripts/render-preview.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "crypto",
+    "trading",
+    "hyperliquid",
+    "pump-fun",
+    "solana",
+    "cli",
+    "tui",
+    "dashboard",
+    "agent",
+    "trading-bot",
+    "fear-and-greed",
+    "market-regime",
+    "capital-flow",
+    "open-interest",
+    "funding-rate"
+  ],
+  "author": "yksanjo",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yksanjo/agentdesk-flow.git"
+  },
+  "homepage": "https://github.com/yksanjo/agentdesk-flow#readme",
+  "bugs": {
+    "url": "https://github.com/yksanjo/agentdesk-flow/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}

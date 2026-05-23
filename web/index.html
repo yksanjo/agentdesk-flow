@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agentdesk-flow · live capital flow indicator</title>
+<meta name="description" content="Live capital-flow indicator for 230 Hyperliquid perps + pump.fun. Bot veto layer. Open source, MIT.">
+<meta property="og:title" content="agentdesk-flow">
+<meta property="og:description" content="Live capital-flow indicator for crypto perps + pump.fun. When money is flowing out, no entry strategy works. When it's flowing in, you win no matter what.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --bg: #0b0d10;
+    --bg-2: #11141a;
+    --fg: #d6d6d6;
+    --dim: #6b7280;
+    --bright: #ffffff;
+    --green: #00d775;
+    --green-bright: #00ff8c;
+    --lime: #aaff55;
+    --yellow: #ffdd33;
+    --orange: #ff8844;
+    --red: #ff4444;
+    --red-bright: #ff2222;
+    --border: #1f242c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .container {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+  header {
+    margin-bottom: 40px;
+  }
+  h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--bright);
+    letter-spacing: -0.5px;
+  }
+  .tagline {
+    color: var(--dim);
+    font-family: -apple-system, system-ui, sans-serif;
+    margin: 0 0 16px;
+    font-size: 15px;
+  }
+  .links {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-family: -apple-system, system-ui, sans-serif;
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+  .links a {
+    color: var(--lime);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(170, 255, 85, 0.3);
+    padding-bottom: 2px;
+  }
+  .links a:hover { color: var(--green-bright); border-bottom-color: var(--green-bright); }
+  .dashboard {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+  }
+  .status-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .title-row { font-weight: 700; color: var(--bright); }
+  .gauge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    font-size: 13px;
+    letter-spacing: -1px;
+  }
+  .gauge-cell { display: inline-block; min-width: 6px; text-align: center; }
+  .net { font-weight: 700; }
+  .regime { font-weight: 700; }
+  .meta {
+    color: var(--dim);
+    font-family: -apple-system, system-ui, sans-serif;
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th, td {
+    padding: 6px 10px;
+    text-align: right;
+    white-space: nowrap;
+  }
+  th { color: var(--dim); font-weight: 600; border-bottom: 1px solid var(--border); }
+  th:first-child, td:first-child { text-align: left; }
+  th:nth-child(2), td:nth-child(2) { text-align: left; font-weight: 600; color: var(--bright); }
+  tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+  .v { color: var(--dim); font-size: 11px; }
+  .verdict { font-weight: 700; text-align: left; padding-left: 16px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+  .dot.ok { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .dot.warn { background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+  .dot.err { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  .pos { color: var(--green); }
+  .pos-strong { color: var(--green-bright); font-weight: 700; }
+  .neg { color: var(--orange); }
+  .neg-strong { color: var(--red-bright); font-weight: 700; }
+  .neutral { color: var(--dim); }
+  .yellow { color: var(--yellow); }
+  .section {
+    font-family: -apple-system, system-ui, sans-serif;
+    color: var(--fg);
+    max-width: 760px;
+    margin-bottom: 32px;
+  }
+  .section h2 {
+    font-size: 18px;
+    color: var(--bright);
+    margin: 0 0 12px;
+  }
+  .section p { color: #b8bfc8; margin: 0 0 12px; }
+  pre {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px;
+    overflow-x: auto;
+    font-size: 12px;
+    color: var(--lime);
+  }
+  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    color: var(--dim);
+    font-family: -apple-system, system-ui, sans-serif;
+    font-size: 12px;
+  }
+  .footer a { color: var(--dim); }
+  .err-banner {
+    background: rgba(255, 68, 68, 0.1);
+    border: 1px solid var(--red);
+    color: var(--red-bright);
+    padding: 12px;
+    border-radius: 4px;
+    font-family: -apple-system, system-ui, sans-serif;
+    font-size: 13px;
+  }
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 12px 0;
+    font-family: -apple-system, system-ui, sans-serif;
+    font-size: 12px;
+  }
+  .filter-btn {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    padding: 4px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    font: inherit;
+  }
+  .filter-btn.active { background: var(--lime); color: var(--bg); border-color: var(--lime); font-weight: 700; }
+  .filter-btn:hover { border-color: var(--lime); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>agentdesk-flow</h1>
+  <p class="tagline">Live capital flow indicator — 230 Hyperliquid perps + pump.fun. When money flows out, no strategy works. When it flows in, you win no matter what.</p>
+  <div class="links">
+    <a href="https://github.com/yksanjo/agentdesk-flow" target="_blank">GitHub →</a>
+    <a href="#install">Install</a>
+    <a href="#bot">Bot veto layer</a>
+    <a href="#scoring">How scoring works</a>
+  </div>
+</header>
+
+<div class="dashboard" id="dash">
+  <div class="status-bar">
+    <span class="title-row">AGENTDESK FLOW</span>
+    <span class="gauge" id="gauge">────────────────────────────────</span>
+    <span class="net" id="net">·</span>
+    <span class="regime" id="regime">WAITING</span>
+    <span class="meta" id="clock"></span>
+    <span class="dot warn" id="status-dot"></span>
+  </div>
+  <div class="meta" id="counts">Connecting to flow feed…</div>
+
+  <div class="filter-bar">
+    <button class="filter-btn active" data-f="all">all</button>
+    <button class="filter-btn" data-f="inflow">inflow only</button>
+    <button class="filter-btn" data-f="outflow">outflow only</button>
+    <button class="filter-btn" data-f="strong">strong moves</button>
+    <button class="filter-btn" data-f="veto">veto candidates</button>
+  </div>
+
+  <table id="rows-table">
+    <thead>
+      <tr>
+        <th style="width: 50px;">Venue</th>
+        <th style="width: 100px;">Market</th>
+        <th>Flow 5m</th>
+        <th>1H</th>
+        <th>24H</th>
+        <th>OI</th>
+        <th>Funding</th>
+        <th>OIΔ</th>
+        <th>PxΔ</th>
+        <th class="verdict">Verdict</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+
+<div class="section" id="install">
+  <h2>Install</h2>
+  <pre><code>git clone https://github.com/yksanjo/agentdesk-flow
+cd agentdesk-flow
+npm install
+npm run headless &  # producer
+npm run dash         # live ticker (mop-style)
+npm run gauge        # gauge dashboard (CNN F&amp;G style)</code></pre>
+</div>
+
+<div class="section" id="bot">
+  <h2>Bot veto layer</h2>
+  <p>Every entry should consult flow first. Fail-closed by default — if the snapshot is stale or missing, every entry is vetoed. A trading bot that can't see flow shouldn't be entering.</p>
+  <pre><code>import { flowVeto, marketRegime } from "@yksanjo/agentdesk-flow";
+
+const v = await flowVeto("hyperliquid", "SOL", {
+  side: "long",
+  minScore: 30,
+  window: "5m",
+});
+if (!v.allow) return log(`vetoed: ${v.reason}`);
+
+const regime = await marketRegime();
+if (regime.net &lt; -40) return log("regime risk-off, halting");
+
+// proceed with entry</code></pre>
+</div>
+
+<div class="section" id="scoring">
+  <h2>How scoring works</h2>
+  <p>Each market is scored <code>[-100, +100]</code> from three components combined with calibrated weights:</p>
+  <ul>
+    <li><strong>OI delta</strong> (×1200, weight 0.4) — magnitude of new positioning</li>
+    <li><strong>Price delta</strong> (×4000, weight 0.5) — which side is taking; gives the OI signal its sign</li>
+    <li><strong>Funding rate</strong> (×80,000, weight 0.1) — crowding confirmation</li>
+  </ul>
+  <p>The four-quadrant logic: OI↑ + price↑ = bullish inflow, OI↑ + price↓ = bearish inflow (shorts entering), OI↓ + price↑ = squeeze, OI↓ + price↓ = capitulation.</p>
+  <p>Pump.fun has no perp-style OI/funding, so its score is synthesized from DexScreener aggregate volume + liquidity-weighted 1h price change.</p>
+</div>
+
+<div class="footer">
+  agentdesk-flow · MIT · <a href="https://github.com/yksanjo/agentdesk-flow">source</a> · feed updates every 30s ·
+  built by <a href="https://x.com/yksanjo">@yksanjo</a>
+</div>
+
+</div>
+
+<script>
+const FEED_URL = "flow-signals.json";
+const REFRESH_MS = 5000;
+
+let currentFilter = "all";
+
+function colorForScore(s) {
+  if (s === null || s === undefined) return "neutral";
+  if (s >= 60) return "pos-strong";
+  if (s >= 20) return "pos";
+  if (s <= -60) return "neg-strong";
+  if (s <= -20) return "neg";
+  return "yellow";
+}
+
+function fmtScore(s) {
+  if (s === null || s === undefined) return '<span class="neutral">·</span>';
+  const cls = colorForScore(s);
+  const txt = (s > 0 ? "+" : "") + s;
+  return `<span class="${cls}">${txt}</span>`;
+}
+
+function fmtUsd(x) {
+  if (x === null || x === undefined || !isFinite(x)) return '<span class="neutral">—</span>';
+  if (x >= 1e9) return (x / 1e9).toFixed(1) + "B";
+  if (x >= 1e6) return (x / 1e6).toFixed(1) + "M";
+  if (x >= 1e3) return (x / 1e3).toFixed(1) + "K";
+  return x.toFixed(0);
+}
+
+function fmtPct(x) {
+  if (x === null || x === undefined) return '<span class="neutral">—</span>';
+  const v = (x * 100).toFixed(2);
+  const cls = x > 0.002 ? "pos" : x < -0.002 ? "neg" : "neutral";
+  return `<span class="${cls}">${x >= 0 ? "+" : ""}${v}%</span>`;
+}
+
+function fmtFunding(x) {
+  if (x === null || x === undefined) return '<span class="neutral">—</span>';
+  const v = (x * 100).toFixed(4);
+  const cls = x > 0.00005 ? "pos" : x < -0.00005 ? "neg" : "neutral";
+  return `<span class="${cls}">${x >= 0 ? "+" : ""}${v}%</span>`;
+}
+
+function verdictLabel(s) {
+  if (s === null || s === undefined) return '<span class="neutral verdict">WAIT</span>';
+  const cls = colorForScore(s);
+  let label = "NEUTRAL";
+  if (s >= 60) label = "STRONG INFLOW";
+  else if (s >= 20) label = "INFLOW";
+  else if (s <= -60) label = "STRONG OUTFLOW";
+  else if (s <= -20) label = "OUTFLOW";
+  return `<span class="${cls} verdict">${label}</span>`;
+}
+
+const VENUE_CODE = {
+  hyperliquid: "HL",
+  drift: "DRI",
+  aevo: "AEV",
+  dydx: "DDX",
+  pumpfun: "PMP",
+};
+
+function renderGauge(net) {
+  const width = 32;
+  const clamped = Math.max(-100, Math.min(100, net));
+  const pos = Math.round(((clamped + 100) / 200) * (width - 1));
+  let html = "";
+  for (let i = 0; i < width; i++) {
+    const f = i / (width - 1);
+    let color;
+    if (f < 0.2) color = "var(--red-bright)";
+    else if (f < 0.4) color = "var(--orange)";
+    else if (f < 0.5) color = "#ff9944";
+    else if (f < 0.55) color = "var(--yellow)";
+    else if (f < 0.7) color = "var(--lime)";
+    else if (f < 0.85) color = "var(--green)";
+    else color = "var(--green-bright)";
+    if (i === pos) {
+      html += `<span class="gauge-cell" style="color:${color};font-weight:700;text-shadow:0 0 6px ${color}">▼</span>`;
+    } else {
+      html += `<span class="gauge-cell" style="color:${color}">▬</span>`;
+    }
+  }
+  return html;
+}
+
+function regimeLabel(net) {
+  if (net >= 40) return { text: "RISK-ON", color: "var(--green-bright)" };
+  if (net >= 15) return { text: "TILT UP", color: "var(--lime)" };
+  if (net <= -40) return { text: "RISK-OFF", color: "var(--red-bright)" };
+  if (net <= -15) return { text: "TILT DOWN", color: "var(--orange)" };
+  return { text: "MIXED", color: "var(--yellow)" };
+}
+
+function computeRegime(markets) {
+  const scored = markets.filter(m => m.flow5m !== null && m.flow5m !== undefined);
+  if (!scored.length) return { net: 0, inflow: 0, outflow: 0, total: 0 };
+  const sum = scored.reduce((s, m) => s + m.flow5m, 0);
+  const net = Math.max(-100, Math.min(100, Math.round((sum / scored.length) * 2)));
+  const inflow = scored.filter(m => m.flow5m > 20).length;
+  const outflow = scored.filter(m => m.flow5m < -20).length;
+  return { net, inflow, outflow, total: scored.length };
+}
+
+function applyFilter(rows) {
+  if (currentFilter === "inflow") return rows.filter(r => (r.flow5m ?? 0) > 20);
+  if (currentFilter === "outflow") return rows.filter(r => (r.flow5m ?? 0) < -20);
+  if (currentFilter === "strong") return rows.filter(r => Math.abs(r.flow5m ?? 0) >= 60);
+  if (currentFilter === "veto") return rows.filter(r => (r.flow5m ?? 0) < 20);
+  return rows;
+}
+
+function render(snap, ageSec) {
+  const reg = computeRegime(snap.markets);
+  document.getElementById("gauge").innerHTML = renderGauge(reg.net);
+  const lbl = regimeLabel(reg.net);
+  const netEl = document.getElementById("net");
+  netEl.textContent = (reg.net > 0 ? "+" : "") + reg.net;
+  netEl.style.color = lbl.color;
+  const regEl = document.getElementById("regime");
+  regEl.textContent = lbl.text;
+  regEl.style.color = lbl.color;
+  document.getElementById("clock").textContent = new Date().toLocaleTimeString();
+
+  const dot = document.getElementById("status-dot");
+  dot.className = "dot " + (ageSec > 90 ? "err" : ageSec > 45 ? "warn" : "ok");
+
+  document.getElementById("counts").innerHTML =
+    `<span class="pos">Inflow ${reg.inflow}</span> · ` +
+    `<span class="neg">Outflow ${reg.outflow}</span> · ` +
+    `${reg.total} markets scored · snapshot ${ageSec}s old`;
+
+  const filtered = applyFilter(snap.markets);
+  const sorted = [...filtered].sort((a, b) => Math.abs(b.flow5m ?? 0) - Math.abs(a.flow5m ?? 0));
+  const top = sorted.slice(0, 30);
+
+  const tbody = document.getElementById("rows");
+  tbody.innerHTML = top.map(r => {
+    const code = VENUE_CODE[r.venue] || r.venue.substring(0, 3).toUpperCase();
+    return `<tr>
+      <td><span class="v">${code}</span></td>
+      <td>${r.symbol}</td>
+      <td>${fmtScore(r.flow5m)}</td>
+      <td>${fmtScore(r.flow1h)}</td>
+      <td>${fmtScore(r.flow24h)}</td>
+      <td>${fmtUsd(r.oiUsd)}</td>
+      <td>${fmtFunding(r.components?.funding)}</td>
+      <td>${fmtPct(r.components?.oiDeltaPct)}</td>
+      <td>${fmtPct(r.components?.priceDeltaPct)}</td>
+      <td>${verdictLabel(r.flow5m)}</td>
+    </tr>`;
+  }).join("");
+}
+
+async function tick() {
+  try {
+    const r = await fetch(FEED_URL + "?nc=" + Date.now());
+    if (!r.ok) throw new Error(`feed ${r.status}`);
+    const snap = await r.json();
+    const ageSec = Math.round((Date.now() - new Date(snap.asOf).getTime()) / 1000);
+    render(snap, ageSec);
+  } catch (e) {
+    const dash = document.getElementById("dash");
+    let banner = document.getElementById("err-banner");
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "err-banner";
+      banner.className = "err-banner";
+      dash.prepend(banner);
+    }
+    banner.textContent = `feed unavailable: ${e.message}. retrying…`;
+    document.getElementById("status-dot").className = "dot err";
+  }
+}
+
+document.querySelectorAll(".filter-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentFilter = btn.dataset.f;
+    tick();
+  });
+});
+
+tick();
+setInterval(tick, REFRESH_MS);
+</script>
+
+</body>
+</html>
