@@ -11,7 +11,7 @@ import { scoreWindow, verdict } from "./score.js";
 import { render, showCursor } from "./tui.js";
 import type { FlowRow, FlowSnapshot, RawSample } from "./types.js";
 
-const SNAPSHOT_PATH = "data/flow-signals.json";
+const SNAPSHOT_PATH = process.env.SNAPSHOT_OVERRIDE ?? "data/flow-signals.json";
 const POLL_MS = Number(process.env.FLOW_POLL_MS ?? 30_000);
 const TOP_N = Number(process.env.FLOW_TOP_N ?? 30);
 const HEADLESS = process.env.FLOW_HEADLESS === "1";
