@@ -54,11 +54,43 @@ function buildRow(
   };
 }
 
+// PUBLIC_FEED=1 redacts the snapshot for public web exposure:
+//   - keep only top N rows by |flow5m|
+//   - drop raw components (OIΔ, PxΔ, funding) so the scoring cannot be reverse-engineered
+//   - drop OI and dayVol so positioning size is not leaked
+const PUBLIC_FEED = process.env.PUBLIC_FEED === "1";
+const PUBLIC_TOP_N = Number(process.env.PUBLIC_TOP_N ?? 10);
+
+function redactForPublic(rows: FlowRow[]): FlowRow[] {
+  const ranked = [...rows].sort(
+    (a, b) => Math.abs(b.flow5m ?? 0) - Math.abs(a.flow5m ?? 0),
+  );
+  return ranked.slice(0, PUBLIC_TOP_N).map((r) => ({
+    venue: r.venue,
+    symbol: r.symbol,
+    markPx: null,
+    oiUsd: null,
+    dayVolUsd: null,
+    flow5m: r.flow5m,
+    flow1h: r.flow1h,
+    flow24h: r.flow24h,
+    components: {
+      oiDeltaPct: 0,
+      priceDeltaPct: 0,
+      funding: 0,
+      volumeDeltaPct: 0,
+    },
+    verdict: r.verdict,
+    updatedAt: r.updatedAt,
+  }));
+}
+
 async function writeSnapshot(rows: FlowRow[]): Promise<void> {
+  const out = PUBLIC_FEED ? redactForPublic(rows) : rows;
   const snap: FlowSnapshot = {
     asOf: new Date().toISOString(),
     windows: ["5m", "1h", "24h"],
-    markets: rows,
+    markets: out,
   };
   await mkdir(dirname(SNAPSHOT_PATH), { recursive: true });
   await writeFile(SNAPSHOT_PATH, JSON.stringify(snap, null, 2));

@@ -193,12 +193,9 @@
 
 <header>
   <h1>agentdesk-flow</h1>
-  <p class="tagline">Live capital flow indicator — 230 Hyperliquid perps + pump.fun. When money flows out, no strategy works. When it flows in, you win no matter what.</p>
+  <p class="tagline">Real-time capital flow across 230 crypto markets. Color-coded inflow / outflow signals updated every 30 seconds.</p>
   <div class="links">
-    <a href="https://github.com/yksanjo/agentdesk-flow" target="_blank">GitHub →</a>
-    <a href="#install">Install</a>
-    <a href="#bot">Bot veto layer</a>
-    <a href="#scoring">How scoring works</a>
+    <a href="#access">Get access</a>
   </div>
 </header>
 
@@ -225,64 +222,29 @@
     <thead>
       <tr>
         <th style="width: 50px;">Venue</th>
-        <th style="width: 100px;">Market</th>
+        <th style="width: 120px;">Market</th>
         <th>Flow 5m</th>
         <th>1H</th>
         <th>24H</th>
-        <th>OI</th>
-        <th>Funding</th>
-        <th>OIΔ</th>
-        <th>PxΔ</th>
-        <th class="verdict">Verdict</th>
+        <th class="verdict">Signal</th>
       </tr>
     </thead>
     <tbody id="rows"></tbody>
   </table>
 </div>
 
-<div class="section" id="install">
-  <h2>Install</h2>
-  <pre><code>git clone https://github.com/yksanjo/agentdesk-flow
-cd agentdesk-flow
-npm install
-npm run headless &  # producer
-npm run dash         # live ticker (mop-style)
-npm run gauge        # gauge dashboard (CNN F&amp;G style)</code></pre>
-</div>
-
-<div class="section" id="bot">
-  <h2>Bot veto layer</h2>
-  <p>Every entry should consult flow first. Fail-closed by default — if the snapshot is stale or missing, every entry is vetoed. A trading bot that can't see flow shouldn't be entering.</p>
-  <pre><code>import { flowVeto, marketRegime } from "@yksanjo/agentdesk-flow";
-
-const v = await flowVeto("hyperliquid", "SOL", {
-  side: "long",
-  minScore: 30,
-  window: "5m",
-});
-if (!v.allow) return log(`vetoed: ${v.reason}`);
-
-const regime = await marketRegime();
-if (regime.net &lt; -40) return log("regime risk-off, halting");
-
-// proceed with entry</code></pre>
-</div>
-
-<div class="section" id="scoring">
-  <h2>How scoring works</h2>
-  <p>Each market is scored <code>[-100, +100]</code> from three components combined with calibrated weights:</p>
+<div class="section" id="access">
+  <h2>Get access</h2>
+  <p>The preview above shows a sample of live markets. Full feed, programmatic API for trading bots, and lower-latency cadence are available to early users.</p>
+  <p>Request access by DM:</p>
   <ul>
-    <li><strong>OI delta</strong> (×1200, weight 0.4) — magnitude of new positioning</li>
-    <li><strong>Price delta</strong> (×4000, weight 0.5) — which side is taking; gives the OI signal its sign</li>
-    <li><strong>Funding rate</strong> (×80,000, weight 0.1) — crowding confirmation</li>
+    <li><a href="https://x.com/yksanjo" target="_blank">@yksanjo on X</a></li>
+    <li>Telegram: @yksanjo</li>
   </ul>
-  <p>The four-quadrant logic: OI↑ + price↑ = bullish inflow, OI↑ + price↓ = bearish inflow (shorts entering), OI↓ + price↑ = squeeze, OI↓ + price↓ = capitulation.</p>
-  <p>Pump.fun has no perp-style OI/funding, so its score is synthesized from DexScreener aggregate volume + liquidity-weighted 1h price change.</p>
 </div>
 
 <div class="footer">
-  agentdesk-flow · MIT · <a href="https://github.com/yksanjo/agentdesk-flow">source</a> · feed updates every 30s ·
-  built by <a href="https://x.com/yksanjo">@yksanjo</a>
+  agentdesk-flow · feed updates every 30s · built by <a href="https://x.com/yksanjo">@yksanjo</a>
 </div>
 
 </div>
@@ -433,10 +395,6 @@ function render(snap, ageSec) {
       <td>${fmtScore(r.flow5m)}</td>
       <td>${fmtScore(r.flow1h)}</td>
       <td>${fmtScore(r.flow24h)}</td>
-      <td>${fmtUsd(r.oiUsd)}</td>
-      <td>${fmtFunding(r.components?.funding)}</td>
-      <td>${fmtPct(r.components?.oiDeltaPct)}</td>
-      <td>${fmtPct(r.components?.priceDeltaPct)}</td>
       <td>${verdictLabel(r.flow5m)}</td>
     </tr>`;
   }).join("");
